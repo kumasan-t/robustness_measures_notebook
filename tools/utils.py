@@ -5,6 +5,24 @@ import json
 import os
 
 
+def load_graph_list(path):
+    """
+    Load a bunch of graphs from a given directory according to networkx specifications.
+    :param path: path where graph data is stored
+    :return: a list of graphs
+    """
+    os.chdir(path)
+    graph_list = list()
+    for file in glob.glob("*.json"):
+        with open(file) as f:
+            json_graph = json.load(f)
+            graph = parse_graph_from_json(json_graph)
+            clean_isolated_nodes(graph)
+            graph = fix_connectivity(graph)
+            graph_list.append(graph)
+    return graph_list
+
+
 def build_presence_dictionary(betweenness_centrality_lists):
     """
     Builds a presence list that counts how many time a node appears in the top 15 nodes depending on the
@@ -23,6 +41,15 @@ def build_presence_dictionary(betweenness_centrality_lists):
         for item in top_fifteen:
             presence_count[item[0]].append(i)
     return presence_count
+
+
+def get_betweenness_top_nodes(betweenness_centrality_lists):
+    """
+    Return only the keys of the top nodes sorted by betweenness centrality
+    :param betweenness_centrality_lists: a dictionary containing all the bc values for each snapshot
+    :return: a list of nodes
+    """
+    return build_presence_dictionary(betweenness_centrality_lists).keys()
 
 
 def removes_satellites(graph):
@@ -136,7 +163,7 @@ def parse_graph_from_json(json_graph):
             graph.add_edge(edge['node1_pub'],
                            edge['node2_pub'],
                            capacity=int(edge['capacity']),
-                           weight=int(edge['capacity']),
+                           # weight=int(edge['capacity']),
                            last_update=int(edge['last_update']),
                            channel_id=edge['channel_id'],
                            chan_point=edge['chan_point'],
