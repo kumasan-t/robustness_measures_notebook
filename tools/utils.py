@@ -23,22 +23,23 @@ def load_graph_list(path):
     return graph_list
 
 
-def build_presence_dictionary(betweenness_centrality_lists):
+def build_presence_dictionary(betweenness_centrality_lists, top_number):
     """
     Builds a presence list that counts how many time a node appears in the top 15 nodes depending on the
     score of the betweenness centrality.
     :param betweenness_centrality_lists:  a dictionary containing all the bc values for each snapshot
+    :param top_number: the number of nodes we want to see in the gantt chart
     :return: a dictionary of list
     """
     number_of_snapshot = len(betweenness_centrality_lists)
 
-    # Sort each snapshot, select the best 20 nodes.
+    # Sort each snapshot, select the best top_number nodes.
     sorted_snapshots = [None] * number_of_snapshot
     presence_count = ct.defaultdict(list)
     for i in range(number_of_snapshot):
         sorted_snapshots[i] = sorted(betweenness_centrality_lists[i].items(), key=lambda x: x[1], reverse=True)
-        top_fifteen = [sorted_snapshots[i][j] for j in range(15)]
-        for item in top_fifteen:
+        top_list = [sorted_snapshots[i][j] for j in range(top_number)]
+        for item in top_list:
             presence_count[item[0]].append(i)
     return presence_count
 
@@ -49,7 +50,7 @@ def get_betweenness_top_nodes(betweenness_centrality_lists):
     :param betweenness_centrality_lists: a dictionary containing all the bc values for each snapshot
     :return: a list of nodes
     """
-    return build_presence_dictionary(betweenness_centrality_lists).keys()
+    return build_presence_dictionary(betweenness_centrality_lists, top_number=15).keys()
 
 
 def removes_satellites(graph):
@@ -177,3 +178,29 @@ def parse_graph_from_json(json_graph):
                            node2_fee_rate_milli_msat=int(edge['node2_policy']['fee_rate_milli_msat'])
                            )
     return graph
+
+
+def core_component(graph_list):
+    """
+    Returns the list of nodes that never disconnected from the network.
+    :param graph_list: a list of networkx graphs
+    :return: a graph that is the intersection of all the graph in the list
+    """
+    if not graph_list:
+        return []
+    result = set(graph_list[0].nodes)
+    for graph in graph_list:
+        result = set(graph.nodes) & result
+    return result
+
+
+def overall_balance(graph):
+    """
+    Returns the amount of bitcoins currently used in the graph.
+    :param graph: a networkx graph
+    :return: the aggregated capacities of the graph
+    """
+    network_capacity = 0
+    for item in nx.get_edge_attributes(graph, 'capacity').values():
+        network_capacity += item
+    return network_capacity
